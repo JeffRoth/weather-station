@@ -1,0 +1,18 @@
+name = "weather-station-api"
+main = "src/index.js"
+compatibility_date = "2026-07-19"
+
+# Cloudflare Cron expressions run in UTC.  Every 15 minutes is well within
+# Ambient's request limits and yields a durable archive even if the dashboard
+# is never opened.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[[r2_buckets]]
+binding = "WEATHER_ARCHIVE"
+bucket_name = "weather-station-archive"
+
+[vars]
+# The read-only endpoints are public so the static Pages dashboard can work
+# before its final pages.dev domain is known. Write endpoints require ADMIN_TOKEN.
+ALLOWED_ORIGIN = "*"

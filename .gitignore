@@ -1,0 +1,9 @@
+dist/
+cloudflare/import/
+.wrangler/
+# Personal station exports are archived privately in R2, not committed to GitHub.
+data/
+.env
+.dev.vars
+__pycache__/
+*.py[cod]
