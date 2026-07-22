@@ -1,24 +1,6 @@
 const STATION_LOCATION = { latitude: 35.6870, longitude: -105.9378 };
 const API_BASE = (window.WEATHER_API_BASE || '').replace(/\/$/, '');
-const dismissReadoutPlugin = {
-  id: 'dismissReadoutWhenClickedAway',
-  afterEvent(chart, args) {
-    const event = args.event;
-    if (event.type !== 'click' || !chart.tooltip?.getActiveElements().length || !Number.isFinite(event.x) || !Number.isFinite(event.y)) return;
-    let nearestDistance = Infinity;
-    chart.getSortedVisibleDatasetMetas().forEach(meta => meta.data.forEach(point => {
-      if (point.skip) return;
-      const center = point.getCenterPoint();
-      nearestDistance = Math.min(nearestDistance, Math.hypot(event.x - center.x, event.y - center.y));
-    }));
-    if (nearestDistance > 24) {
-      chart.tooltip.setActiveElements([], { x: event.x, y: event.y });
-      args.changed = true;
-    }
-  }
-};
 if (window.ChartZoom) Chart.register(window.ChartZoom);
-Chart.register(dismissReadoutPlugin);
 const state = { daily: [], climate: null, chart: null };
 const el = id => document.getElementById(id);
 const enabled = id => el(id).getAttribute('aria-pressed') === 'true';
@@ -344,6 +326,11 @@ function draw({ preserveZoom = false } = {}) {
   // construction also covers metric/date changes that create a new chart.
   state.chart.options.plugins.tooltip.enabled = enabled('tooltip-toggle');
   state.chart.options.plugins.tooltip.events = ['click'];
+  // A readout requires a direct hit near a plotted value. A tap on open chart
+  // space therefore clears the prior readout instead of selecting a nearest line.
+  state.chart.options.plugins.tooltip.mode = 'index';
+  state.chart.options.plugins.tooltip.intersect = true;
+  state.chart.options.elements = { point: { hitRadius: 12 } };
   state.chart.update('none');
   const last = [...stationValues].reverse().find(Number.isFinite);
   const lastLow = stationLowValues && [...stationLowValues].reverse().find(Number.isFinite);
