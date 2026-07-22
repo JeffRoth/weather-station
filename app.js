@@ -18,6 +18,20 @@ function metricTitle(metric) {
   return ({ temperature: 'Daily mean temperature', highAndLow: 'Daily high and low temperature', highTemperature: 'Daily high temperature', lowTemperature: 'Daily low temperature', temperatureSpread: 'Daily temperature spread', feelsLike: 'Daily mean feels-like temperature', precipitation: 'Annual cumulative precipitation' })[metric];
 }
 
+function dismissReadoutWhenClickedAway(event, _elements, chart) {
+  if (!chart.tooltip?.getActiveElements().length || !Number.isFinite(event.x) || !Number.isFinite(event.y)) return;
+  let nearestDistance = Infinity;
+  chart.getSortedVisibleDatasetMetas().forEach(meta => meta.data.forEach(point => {
+    if (point.skip) return;
+    const center = point.getCenterPoint();
+    nearestDistance = Math.min(nearestDistance, Math.hypot(event.x - center.x, event.y - center.y));
+  }));
+  if (nearestDistance > 24) {
+    chart.tooltip.setActiveElements([], { x: event.x, y: event.y });
+    chart.update('none');
+  }
+}
+
 async function loadStationHistory() {
   // Cloudflare deployment: read compact daily aggregates from the Worker.
   // Keep the CSV path below as a local-development and migration fallback.
@@ -326,6 +340,7 @@ function draw({ preserveZoom = false } = {}) {
   // construction also covers metric/date changes that create a new chart.
   state.chart.options.plugins.tooltip.enabled = enabled('tooltip-toggle');
   state.chart.options.plugins.tooltip.events = ['click'];
+  state.chart.options.onClick = dismissReadoutWhenClickedAway;
   state.chart.update('none');
   const last = [...stationValues].reverse().find(Number.isFinite);
   const lastLow = stationLowValues && [...stationLowValues].reverse().find(Number.isFinite);
