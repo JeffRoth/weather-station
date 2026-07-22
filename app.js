@@ -126,6 +126,29 @@ function annualPrecipitation(dailyMap, date) {
   return total;
 }
 
+function calendarDayAverages(climate, displayYear) {
+  const byDay = new Map();
+  climate.forEach(dailyMap => dailyMap.forEach((values, date) => {
+    const monthDay = date.slice(5);
+    if (!byDay.has(monthDay)) byDay.set(monthDay, []);
+    byDay.get(monthDay).push(values);
+  }));
+  return [...byDay].map(([monthDay, values]) => {
+    const average = field => {
+      const numbers = values.map(value => value[field]).filter(Number.isFinite);
+      return numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : null;
+    };
+    return { date: `${displayYear}-${monthDay}`, highTemperature: average('highTemperature'), lowTemperature: average('lowTemperature') };
+  });
+}
+
+function averageAnnualPrecipitation(climate) {
+  const annualTotals = [...climate.values()].map(dailyMap =>
+    [...dailyMap.values()].reduce((total, values) => total + (values.precipitation || 0), 0)
+  ).filter(Number.isFinite);
+  return annualTotals.length ? annualTotals.reduce((sum, total) => sum + total, 0) / annualTotals.length : null;
+}
+
 function extrema(records, field, direction) {
   const valid = records.filter(record => Number.isFinite(record[field]));
   if (!valid.length) return null;
@@ -139,9 +162,14 @@ function displayDate(date) {
     .format(new Date(`${date}T00:00:00Z`));
 }
 
-function fact(label, record, field) {
+function displayMonthDay(date) {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${date}T00:00:00Z`));
+}
+
+function fact(label, record, field, dateLabel) {
   if (!record) return '';
-  return `<article class="fact"><span class="fact-label">${label}</span><strong class="fact-value">${record[field].toFixed(1)} °F</strong><span class="fact-date">${displayDate(record.date)}</span></article>`;
+  return `<article class="fact"><span class="fact-label">${label}</span><strong class="fact-value">${record[field].toFixed(1)} °F</strong><span class="fact-date">${dateLabel || displayDate(record.date)}</span></article>`;
 }
 
 function precipitationFact(label, amount, date) {
@@ -179,8 +207,14 @@ function renderFacts(range) {
     }
     hottestCards.push(fact('Long-term historic hottest day', extrema(climateRecords, 'highTemperature', 'max'), 'highTemperature'));
     coldestCards.push(fact('Long-term historic coldest day', extrema(climateRecords, 'lowTemperature', 'min'), 'lowTemperature'));
+    const averageDays = calendarDayAverages(state.climate, selectedYear);
+    const averageHottest = extrema(averageDays, 'highTemperature', 'max');
+    const averageColdest = extrema(averageDays, 'lowTemperature', 'min');
+    hottestCards.push(fact('Long-term average hottest day', averageHottest, 'highTemperature', averageHottest && `typically ${displayMonthDay(averageHottest.date)}`));
+    coldestCards.push(fact('Long-term average coldest day', averageColdest, 'lowTemperature', averageColdest && `typically ${displayMonthDay(averageColdest.date)}`));
     const wettest = extrema(climateRecords, 'precipitation', 'max');
     if (wettest) precipitationCards.push(precipitationFact('Long-term historic wettest day', wettest.precipitation, wettest.date));
+    precipitationCards.push(precipitationFact('Long-term average annual precipitation', averageAnnualPrecipitation(state.climate)));
   } else {
     hottestCards.push('<article class="fact"><span class="fact-label">Long-term historic records</span><strong class="fact-value">Load climate data</strong><span class="fact-date">to reveal the historic record</span></article>');
     coldestCards.push('<article class="fact"><span class="fact-label">Long-term historic records</span><strong class="fact-value">Load climate data</strong><span class="fact-date">to reveal the historic record</span></article>');
@@ -284,8 +318,15 @@ function draw({ preserveZoom = false } = {}) {
     state.chart.data.labels = dates.map(d => fmt.format(new Date(d + 'T12:00:00')));
     state.chart.data.datasets = datasets;
     state.chart.options.scales.y.title.text = `${metricTitle(metric)} (${unit})`;
+    state.chart.options.plugins.tooltip.enabled = enabled('tooltip-toggle');
+    state.chart.options.plugins.tooltip.events = ['click'];
     state.chart.update('none');
   }
+  // Tooltips respond to a deliberate tap/click only. Applying this after
+  // construction also covers metric/date changes that create a new chart.
+  state.chart.options.plugins.tooltip.enabled = enabled('tooltip-toggle');
+  state.chart.options.plugins.tooltip.events = ['click'];
+  state.chart.update('none');
   const last = [...stationValues].reverse().find(Number.isFinite);
   const lastLow = stationLowValues && [...stationLowValues].reverse().find(Number.isFinite);
   const latestSummary = highLowMode ? `high ${last == null ? '—' : last.toFixed(1)} / low ${lastLow == null ? '—' : lastLow.toFixed(1)} °F` : last == null ? '—' : last.toFixed(isTemperatureMetric(metric) ? 1 : 2) + ' ' + unit;
@@ -325,6 +366,12 @@ el('metric').addEventListener('change', draw); el('days').addEventListener('chan
 el('load-climate').addEventListener('click', () => loadClimate().catch(e => el('status').textContent = `Could not load climate: ${e.message}`));
 el('refresh').addEventListener('click', refreshLive);
 el('reset-zoom').addEventListener('click', () => state.chart?.resetZoom());
+el('tooltip-toggle').addEventListener('click', () => {
+  const next = !enabled('tooltip-toggle');
+  el('tooltip-toggle').setAttribute('aria-pressed', String(next));
+  el('tooltip-toggle').classList.toggle('active', next);
+  draw({ preserveZoom: true });
+});
 ['long-term-toggle', 'pws-history-toggle', 'pws-current-toggle'].forEach(id => el(id).addEventListener('click', () => {
   const next = !enabled(id);
   el(id).setAttribute('aria-pressed', String(next));
