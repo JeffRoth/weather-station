@@ -205,13 +205,13 @@ function renderFacts(range) {
     for (let year = selectedYear - 10; year < selectedYear; year++) {
       state.climate.get(year)?.forEach((values, date) => climateRecords.push({ date, ...values }));
     }
-    hottestCards.push(fact('Long-term historic hottest day', extrema(climateRecords, 'highTemperature', 'max'), 'highTemperature'));
-    coldestCards.push(fact('Long-term historic coldest day', extrema(climateRecords, 'lowTemperature', 'min'), 'lowTemperature'));
+    hottestCards.push(fact('Record high', extrema(climateRecords, 'highTemperature', 'max'), 'highTemperature'));
+    coldestCards.push(fact('Record low', extrema(climateRecords, 'lowTemperature', 'min'), 'lowTemperature'));
     const averageDays = calendarDayAverages(state.climate, selectedYear);
     const averageHottest = extrema(averageDays, 'highTemperature', 'max');
     const averageColdest = extrema(averageDays, 'lowTemperature', 'min');
-    hottestCards.push(fact('Long-term average hottest day', averageHottest, 'highTemperature', averageHottest && `typically ${displayMonthDay(averageHottest.date)}`));
-    coldestCards.push(fact('Long-term average coldest day', averageColdest, 'lowTemperature', averageColdest && `typically ${displayMonthDay(averageColdest.date)}`));
+    hottestCards.push(fact('Typical warmest day', averageHottest, 'highTemperature', averageHottest && `average high · typically ${displayMonthDay(averageHottest.date)}`));
+    coldestCards.push(fact('Typical coldest day', averageColdest, 'lowTemperature', averageColdest && `average low · typically ${displayMonthDay(averageColdest.date)}`));
     const wettest = extrema(climateRecords, 'precipitation', 'max');
     if (wettest) precipitationCards.push(precipitationFact('Long-term historic wettest day', wettest.precipitation, wettest.date));
     precipitationCards.push(precipitationFact('Long-term average annual precipitation', averageAnnualPrecipitation(state.climate)));
