@@ -1,4 +1,5 @@
 dist/
+node_modules/
 cloudflare/import/
 .wrangler/
 # Personal station exports are archived privately in R2, not committed to GitHub.

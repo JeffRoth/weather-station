@@ -32,3 +32,12 @@ Invoke-RestMethod -Method Post -Uri 'https://YOUR-WORKER.workers.dev/api/admin/i
 ```
 
 The import endpoint is protected by `ADMIN_TOKEN`; it is never used by the dashboard. Preserve the original CSV files locally as an independent backup.
+
+## Correcting an imported period
+
+The Worker groups Ambient's `Daily Rain` values using the station's local
+`America/Denver` date, because that counter resets at local midnight. If you
+need to correct existing daily rain aggregates, download a fresh Ambient CSV
+covering the affected period, replace/add it under `data/`, then rerun the
+export and protected import command above. Imported dates overwrite the same
+dates in the Worker archive.

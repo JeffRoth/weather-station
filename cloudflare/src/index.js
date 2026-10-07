@@ -1,5 +1,8 @@
 const AMBIENT_API = 'https://api.ambientweather.net/v1';
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+// Ambient's dailyrainin counter resets at the station's local midnight, so
+// daily rollups must use the station's timezone rather than UTC.
+const STATION_TIME_ZONE = 'America/Denver';
 
 function corsHeaders(request, env) {
   const origin = request.headers.get('origin');
@@ -23,7 +26,16 @@ function timestampFor(observation) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function dayFor(timestamp) { return new Date(timestamp).toISOString().slice(0, 10); }
+function dayFor(timestamp) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: STATION_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date(timestamp));
+  const value = type => parts.find(part => part.type === type)?.value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
+}
 
 function emptyDay(date) {
   return { date, count: 0, temperatureSum: 0, highTemperature: null, lowTemperature: null, feelsLikeSum: 0, feelsLikeCount: 0, precipitation: 0 };
@@ -137,7 +149,8 @@ function storedDay(day) {
 }
 
 async function importDaily(request, env) {
-  if (!env.ADMIN_TOKEN || request.headers.get('authorization') !== `Bearer ${env.ADMIN_TOKEN}`) return new Response('Unauthorized.', { status: 401 });
+  const adminToken = env.ADMIN_TOKEN?.trim();
+  if (!adminToken || request.headers.get('authorization') !== `Bearer ${adminToken}`) return new Response('Unauthorized.', { status: 401 });
   const payload = await request.json();
   if (!Array.isArray(payload.daily) || !payload.daily.length) return new Response('Expected a non-empty daily array.', { status: 400 });
   const byYear = new Map();

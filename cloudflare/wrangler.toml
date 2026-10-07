@@ -13,6 +13,6 @@ binding = "WEATHER_ARCHIVE"
 bucket_name = "weather-station-archive"
 
 [vars]
-# The read-only endpoints are public so the static Pages dashboard can work
-# before its final pages.dev domain is known. Write endpoints require ADMIN_TOKEN.
-ALLOWED_ORIGIN = "*"
+# The Pages dashboard is the only allowed browser origin. Write endpoints
+# additionally require ADMIN_TOKEN.
+ALLOWED_ORIGIN = "https://weather-station-esf.pages.dev"

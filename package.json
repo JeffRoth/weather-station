@@ -3,5 +3,8 @@
   "type": "module",
   "scripts": {
     "build:pages": "node scripts/build-pages.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.148.0"
   }
 }
